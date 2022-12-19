@@ -1,6 +1,6 @@
 // import { ZoomMtg } from "@zoomus/websdk";
 import ZoomMtgEmbedded from "@zoomus/websdk/embedded";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { GenerateSignatureRequest } from "../001_clients_and_managers/002_SignerClient";
 import { useAppSetting } from "../003_provider/AppSettingProvider";
 import { BackendManagerStateAndMethod } from "./002_useBackendManager";
@@ -30,6 +30,9 @@ export const useZoomSDK = (props: UseZoomSDKProps): ZoomSDKStateAndMethod => {
         return ZoomMtgEmbedded.createClient();
     }, []);
 
+
+    const joinNumRef = useRef<number>(0)
+
     const joinZoom = useMemo(() => {
         console.log("joinZoom!!!!!")
         if (!props.backendManagerState) {
@@ -48,7 +51,7 @@ export const useZoomSDK = (props: UseZoomSDKProps): ZoomSDKStateAndMethod => {
                 secret: "1000", //secret,
             };
             const signature = await props.backendManagerState.generateSignature(signServerSetting.use_local_sign_server, signServerSetting.sign_server_url, sigParams);
-            // console.log("generated Signature", sigParams, signature);
+            console.log("generated Signature", sigParams, signature);
 
             const params = {
                 sdkKey: signature.sdkKey,
@@ -58,8 +61,8 @@ export const useZoomSDK = (props: UseZoomSDKProps): ZoomSDKStateAndMethod => {
                 userName: username,
             };
             // console.log("params", params);
-            const meetingSDKElement = document.getElementById("meetingSDKElement");
-            const meetingSDKChatElement = document.getElementById("meetingSDKChatElement");
+            const meetingSDKElement = document.getElementById(`meetingSDKElement-${joinNumRef.current}`);
+            joinNumRef.current++;
             client.init({
                 zoomAppRoot: meetingSDKElement!,
                 language: "en-US",
@@ -75,13 +78,6 @@ export const useZoomSDK = (props: UseZoomSDKProps): ZoomSDKStateAndMethod => {
                                 width: 300,
                                 height: 700
                             }
-                        }
-                    },
-                    chat: {
-                        popper: {
-                            disableDraggable: true,
-                            anchorElement: meetingSDKChatElement,
-                            placement: 'top'
                         }
                     },
                     meetingInfo: [

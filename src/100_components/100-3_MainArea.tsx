@@ -9,7 +9,9 @@ export const MainArea = () => {
             <>
                 {frontendManagerState.stateControls.openRightSidebarCheckbox.trigger}
                 <div className="main-area">
-                    <div id="meetingSDKElement"></div>
+                    <div id="meetingSDKElement-0"></div>
+                    <div id="meetingSDKElement-1"></div>
+                    <div id="meetingSDKElement-2"></div>
                 </div>
             </>
         );
