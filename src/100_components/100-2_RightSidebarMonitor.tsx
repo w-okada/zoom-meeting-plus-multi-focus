@@ -28,7 +28,7 @@ export const RightSidebarMonitor = () => {
                     <div className="sidebar-video-container">
                         <canvas className="sidebar-video" id={OUT_CANVAS_ELEMENT}></canvas>
                     </div>
-                    <div className="sidebar-video-container">
+                    <div className="sidebar-video-container sidebar-video-container-hide">
                         <canvas className="sidebar-video" id={TEMPORARY_CANVAS_ID}></canvas>
                     </div>
                 </div>

@@ -1,5 +1,5 @@
 export const INPUT_VIDEO_ELEMENT = "input-video-element"
-export const SNAP_CANVAS_ELEMENT = "snap-canvas-element"
+// export const SNAP_CANVAS_ELEMENT = "snap-canvas-element"
 export const RECT_CANVAS_ELEMENT = "rect-canvas-element"
 export const OUT_CANVAS_ELEMENT = "out-canvas-element"
 
@@ -69,3 +69,21 @@ export const COLOR_RAINBOW = [
     [84, 101, 214],
     [99, 81, 195],
 ];
+
+
+
+///// UTIL
+
+export const shuffle = ([...array]) => {
+    for (let i = array.length - 1; i >= 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [array[i], array[j]] = [array[j], array[i]];
+    }
+    return array;
+}
+
+export const select = (max: number, count: number) => {
+    let arr = Array(max).fill(0).map((_x, index) => { return index })
+    arr = shuffle(arr)
+    return arr.slice(0, count)
+}

@@ -1,5 +1,5 @@
 import { useRef, useState } from "react"
-import { INPUT_VIDEO_ELEMENT, MediaType, PERFORMANCE_ALL_SPAN, PERFORMANCE_COSSIM_SPAN, PERFORMANCE_FPS_SPAN, PERFORMANCE_INFER_SPAN, PERFORMANCE_PERSON_NUM_SPAN, PERFORMANCE_REID_SPAN, RECT_CANVAS_ELEMENT, STATUS_WARMUP_SPAN, TARGET_CANVAS_ID, TEMPORARY_CANVAS_ID, } from "../const";
+import { INPUT_VIDEO_ELEMENT, MediaType, OUT_CANVAS_ELEMENT, OUT_HEIGHT, OUT_WIDTH, PERFORMANCE_ALL_SPAN, PERFORMANCE_COSSIM_SPAN, PERFORMANCE_FPS_SPAN, PERFORMANCE_INFER_SPAN, PERFORMANCE_PERSON_NUM_SPAN, PERFORMANCE_REID_SPAN, RECT_CANVAS_ELEMENT, select, STATUS_WARMUP_SPAN, TARGET_CANVAS_ID, TEMPORARY_CANVAS_ID, } from "../const";
 import { InferenceSession } from 'onnxruntime-web';
 
 import * as tf from '@tensorflow/tfjs';
@@ -59,6 +59,17 @@ export const ReIdChunkSizes = {
 export type ReIdChunkSizes = typeof ReIdChunkSizes[keyof typeof ReIdChunkSizes]
 
 
+export type SelectedRects = {
+    startTime: number
+    rects: {
+        motId: number
+        score: number
+        startX: number
+        startY: number
+        endX: number
+        endY: number
+    }[]
+}
 
 // export const NMSDropOverlapThreshold = 0.55
 const PerformancCounter_num = 10
@@ -96,6 +107,8 @@ export type InferenceState = {
     nMSDropOverlapThreshold: number
 
     skipRate: number
+    cellNum: number
+    rotateTime: number
 }
 
 export type InferenceStateAndMethod = InferenceState & {
@@ -112,6 +125,9 @@ export type InferenceStateAndMethod = InferenceState & {
     setNMSDropOverlapThreshold: (val: number) => void
 
     setSkipRate: (val: number) => void
+    setCellNum: (val: number) => void
+    setRotateTime: (val: number) => void
+
 }
 
 export const useInference = (): InferenceStateAndMethod => {
@@ -137,6 +153,22 @@ export const useInference = (): InferenceStateAndMethod => {
     const [engineType, setEnginType] = useState<EngineType>("tfjs")
     const [inputShape, setInputShape] = useState<InputShape>("416x416")
     const [applicationMode, setApplicationMode] = useState<ApplicationMode>("detection")
+    const cellNumRef = useRef<number>(2)
+    const [cellNum, _setCellNum] = useState<number>(cellNumRef.current)
+    const setCellNum = (val: number) => {
+        cellNumRef.current = val
+        _setCellNum(cellNumRef.current)
+    }
+    const rotateTimeRef = useRef<number>(5)
+    const [rotateTime, _setRotateTime] = useState<number>(rotateTimeRef.current)
+    const setRotateTime = (val: number) => {
+        rotateTimeRef.current = val
+        _setRotateTime(rotateTimeRef.current)
+    }
+    const selectedRectsRef = useRef<SelectedRects>({
+        startTime: 0,
+        rects: []
+    })
 
     const reIdChunkSizeRef = useRef<ReIdChunkSizes>(1)
     const [reIdChunkSize, _setReIdChunkSize] = useState<ReIdChunkSizes>(reIdChunkSizeRef.current)
@@ -286,6 +318,13 @@ export const useInference = (): InferenceStateAndMethod => {
         const ratio = Math.min(inputShapeArray[1] / inputResolution[0], inputShapeArray[0] / inputResolution[1])
         const width = inputResolution[0] * ratio
         const height = inputResolution[1] * ratio
+
+        // Out Canvas
+        const outCanvas = document.getElementById(OUT_CANVAS_ELEMENT) as HTMLCanvasElement
+        outCanvas.width = OUT_WIDTH
+        outCanvas.height = OUT_HEIGHT
+        const outCtx = outCanvas.getContext("2d")!
+
         // Show Canvas Information
         console.log("Process Configuration")
         console.log(`
@@ -361,15 +400,15 @@ export const useInference = (): InferenceStateAndMethod => {
 
             // check skip Inference or not in this frame
             _updatePerfFrameCounter(new Date().getTime())
-            if (frameCounterRef.current % (skipRateRef.current + 1) !== 0) {
-                if (applicationMode == "detection") {
-                    _drawDetectedBoxes(dstCanvasCtx, prevBox)
-                } else {
-                    _drawTrackedPersondBoxes(dstCanvasCtx, prevBox)
-                }
-                requestAnimationFrame(() => { process(prevBox) })
-                return
-            }
+            // if (frameCounterRef.current % (skipRateRef.current + 1) !== 0) {
+            //     if (applicationMode == "detection") {
+            //         _drawDetectedBoxes(dstCanvasCtx, prevBox)
+            //     } else {
+            //         _drawTrackedPersondBoxes(dstCanvasCtx, prevBox)
+            //     }
+            //     requestAnimationFrame(() => { process(prevBox) })
+            //     return
+            // }
 
             // Inference
             let validBox: BoundingBox[] = []
@@ -385,10 +424,67 @@ export const useInference = (): InferenceStateAndMethod => {
             // console.log("mainbox:", mainBox)
 
 
+            const currentTime = new Date().getTime()
+            if (currentTime - selectedRectsRef.current.startTime > rotateTimeRef.current * 1000) {
+                targetBox = targetBox.filter(x => { return x.classIdx === 0 }).slice(0, reIdMaxNumRef.current)
+                const selectedRectIdx = select(targetBox.length, cellNumRef.current)
+                const cellWidth = Math.ceil(OUT_WIDTH / selectedRectIdx.length) // cell => 映像内の箱
+                const cellHeight = OUT_HEIGHT
+
+                const newSelectedRects: SelectedRects = {
+                    startTime: currentTime,
+                    rects: []
+                }
+                selectedRectIdx.forEach(idx => {
+                    const rectWidth = (targetBox[idx].endX - targetBox[idx].startX)
+                    const rectHeight = (targetBox[idx].endY - targetBox[idx].startY)
+                    const widthRatio = cellWidth / rectWidth
+                    const heightRatio = cellHeight / rectHeight
+
+                    // 切り抜きの大きさ計算
+                    let cropWidth = 0
+                    let cropHeight = 0
+                    // 倍率の小さい方に依存。
+                    if (widthRatio < heightRatio) {
+                        cropWidth = rectWidth
+                        cropHeight = (cellHeight / cellWidth) * rectWidth
+                    } else {
+                        cropWidth = (cellWidth / cellHeight) * rectHeight
+                        cropHeight = rectHeight
+                    }
+
+                    // 切り抜きの座標計算
+                    const cropCenterX = (targetBox[idx].endX + targetBox[idx].startX) / 2
+                    const cropCenterY = (targetBox[idx].endY + targetBox[idx].startY) / 2
+                    const cropStartX = cropCenterX - cropWidth / 2
+                    const cropEndX = cropCenterX + cropWidth / 2
+                    const cropStartY = cropCenterY - cropHeight / 2
+                    const cropEndY = cropCenterY + cropHeight / 2
+
+                    newSelectedRects.rects.push({
+                        motId: applicationMode === "detection" ? -1 : targetBox[idx].motId,
+                        score: targetBox[idx].score,
+                        startX: cropStartX,
+                        startY: cropStartY,
+                        endX: cropEndX,
+                        endY: cropEndY
+                    })
+                })
+                selectedRectsRef.current = newSelectedRects
+            }
+
+
             // Draw BoundingBox
             if (applicationMode === "detection") {
-                _drawDetectedBoxes(dstCanvasCtx, targetBox)
-
+                const cellWidth = Math.ceil(OUT_WIDTH / selectedRectsRef.current.rects.length) // cell => 映像内の箱
+                const cellHeight = OUT_HEIGHT
+                outCtx.fillStyle = `rgba(0,0,0,255)`
+                outCtx.fillRect(0, 0, outCanvas.width, outCanvas.height)
+                selectedRectsRef.current.rects.forEach((x, index) => {
+                    outCtx.drawImage(dstCanvas, x.startX, x.startY, x.endX - x.startX, x.endY - x.startY,
+                        cellWidth * index, 0, cellWidth, cellHeight)
+                })
+                _drawDetectedBoxes(dstCanvasCtx, selectedRectsRef.current)
             } else {
 
                 // Limit person box to maxnum
@@ -409,6 +505,22 @@ export const useInference = (): InferenceStateAndMethod => {
                 })
                 _drawTrackedPersondBoxes(dstCanvasCtx, targetBox)
             }
+
+
+            // ブラックアウトエフェクト
+            const elapseTime = currentTime - selectedRectsRef.current.startTime
+            const restTime = rotateTimeRef.current * 1000 - elapseTime
+            if (elapseTime < 500) {
+                const aplha = (500 - elapseTime) / 500
+                outCtx.fillStyle = `rgba(0,0,0,${aplha})`
+                outCtx.fillRect(0, 0, outCanvas.width, outCanvas.height)
+            }
+            if (restTime < 500) {
+                const aplha = (500 - restTime) / 500
+                outCtx.fillStyle = `rgba(0,0,0,${aplha})`
+                outCtx.fillRect(0, 0, outCanvas.width, outCanvas.height)
+            }
+
 
             const perfCounterAll_end = performance.now()
             const perfCounterAll = perfCounterAll_end - perfCounterAll_start
@@ -449,6 +561,10 @@ export const useInference = (): InferenceStateAndMethod => {
 
         skipRate,
         setSkipRate,
+        cellNum,
+        setCellNum,
+        rotateTime,
+        setRotateTime
     };
     return returnValue;
 };

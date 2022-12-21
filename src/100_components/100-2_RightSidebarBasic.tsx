@@ -172,6 +172,68 @@ export const BasicSetting = () => {
         )
     }, [inferenceState.applicationMode])
 
+    const setCellNumRow = useMemo(() => {
+        const options = [1, 2, 3, 4].map(x => {
+            return (
+                <option key={x} value={x}>
+                    {x}
+                </option>
+            )
+        })
+
+        const select = (
+            <select
+                value={inferenceState.cellNum}
+                onChange={(e) => {
+                    inferenceState.setCellNum(Number(e.target.value))
+                }}
+                className="sidebar-content-row-select-select"
+            >
+                {options}
+            </select>
+        );
+
+        return (
+            <div className="sidebar-content-row-5-5">
+                <div className="sidebar-content-row-label">cells:</div>
+                <div className="sidebar-content-row-select">{select}</div>
+            </div>
+
+        )
+    }, [inferenceState.cellNum])
+
+
+    const setRotateTimeRow = useMemo(() => {
+        const options = [3, 5, 10].map(x => {
+            return (
+                <option key={x} value={x}>
+                    {x}
+                </option>
+            )
+        })
+
+        const select = (
+            <select
+                value={inferenceState.rotateTime}
+                onChange={(e) => {
+                    inferenceState.setRotateTime(Number(e.target.value))
+                }}
+                className="sidebar-content-row-select-select"
+            >
+                {options}
+            </select>
+        );
+
+        return (
+            <div className="sidebar-content-row-5-5">
+                <div className="sidebar-content-row-label">interval:</div>
+                <div className="sidebar-content-row-select">{select}</div>
+            </div>
+
+        )
+    }, [inferenceState.rotateTime])
+
+
     const processButtonRow = useMemo(() => {
         const buttonLabel = inferenceState.processId === 0 ? "start process" : "stop process"
         const buttonClass = inferenceState.processId === 0 ? "sidebar-content-row-button" : "sidebar-content-row-button-activated"
@@ -205,6 +267,8 @@ export const BasicSetting = () => {
             {selectEngineRow}
             {selectInputShapeRow}
             {selectApplicationModeRow}
+            {setCellNumRow}
+            {setRotateTimeRow}
             <div className="sidebar-content-row-dividing"></div>
             {processButtonRow}
             {statusWarmupRow}

@@ -1,12 +1,12 @@
 import { COLOR_RAINBOW, names } from "../const";
-import { BoundingBox } from "./200_useInference";
+import { BoundingBox, SelectedRects } from "./200_useInference";
 
 export const useDrawDetectedBoxes = () => {
 
-    const _drawDetectedBoxes = (dstCanvasCtx: CanvasRenderingContext2D, boxes: BoundingBox[]) => {
-        boxes.forEach((x) => {
-            const color = COLOR_RAINBOW[x.classIdx % COLOR_RAINBOW.length]
-            const colorStr = `rgba(${color[0]}, ${color[1]}, ${color[2]}, 0.8)`
+    const _drawDetectedBoxes = (dstCanvasCtx: CanvasRenderingContext2D, boxes: SelectedRects) => {
+        boxes.rects.forEach((x) => {
+            const color = COLOR_RAINBOW[0]
+            const colorStr = `rgba(${color[0]}, ${color[1]}, ${color[2]}, 0.6)`
 
             dstCanvasCtx.beginPath();
             dstCanvasCtx.strokeStyle = colorStr;
@@ -15,12 +15,11 @@ export const useDrawDetectedBoxes = () => {
             dstCanvasCtx.stroke();
             dstCanvasCtx.fillStyle = colorStr;
             dstCanvasCtx.font = "bold 60px 'Segoe Print', san-serif";
-            dstCanvasCtx.fillText(`${names[x.classIdx]}, ${(x.score * 100).toFixed(1)}%`, x.startX, x.startY)
+            dstCanvasCtx.fillText(`${(x.score * 100).toFixed(1)}%`, x.startX, x.startY)
 
         })
-
-
     }
+
     return { _drawDetectedBoxes }
 }
 

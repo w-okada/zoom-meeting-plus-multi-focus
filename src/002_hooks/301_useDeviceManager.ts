@@ -107,6 +107,7 @@ export const useDeviceManager = (props: UseDeviceManagerProps): DeviceManagerSta
         }
         if (videoElement) {
             videoElement.src = url
+            videoElement.loop = true
             videoElement.play()
         }
     }
