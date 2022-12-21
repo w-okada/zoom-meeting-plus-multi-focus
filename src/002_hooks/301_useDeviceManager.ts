@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react"
+import { useMemo, useRef, useState } from "react"
 import { DeviceInfo, DeviceManager } from "../001_clients_and_managers/001_DeviceManager"
 import { BrowserProxyStateAndMethod } from "./300_useBrowserProxy";
 
@@ -25,6 +25,8 @@ export const useDeviceManager = (props: UseDeviceManagerProps): DeviceManagerSta
     const [lastUpdateTime, setLastUpdateTime] = useState(0)
     const [videoInputDeviceId, _setVideoInputDeviceId] = useState<string | null>(null)
     const [videoElement, _setVideoElement] = useState<HTMLVideoElement | null>(null)
+
+    const mediaStreamRef = useRef<MediaStream | null>(null)
 
     const deviceManager = useMemo(() => {
         const manager = new DeviceManager()
@@ -57,22 +59,46 @@ export const useDeviceManager = (props: UseDeviceManagerProps): DeviceManagerSta
         _setVideoElement(elem)
     }
     const setVideoInputDeviceId = async (val: string | null) => {
+        console.log("setvideo", val, videoElement)
         if (val && videoElement) {
+            console.log(val, videoElement)
             const ms = await props.browserProxyState.getUserMedia({
                 video: {
                     deviceId: val
                 }
             })
+
+            if (mediaStreamRef.current) {
+                mediaStreamRef.current.getTracks().forEach(x => x.stop())
+                mediaStreamRef.current = null
+            }
+
+            videoElement.pause()
             videoElement.srcObject = ms
+            mediaStreamRef.current = ms
+            videoElement.play()
         } else if (videoElement) {
+            if (mediaStreamRef.current) {
+                mediaStreamRef.current.getTracks().forEach(x => x.stop())
+                mediaStreamRef.current = null
+            }
             videoElement.srcObject = null
+
+            videoElement.pause()
         }
+
         _setVideoInputDeviceId(val)
     }
 
     const setVideoFileURL = (url: string) => {
+        videoElement.pause()
+        if (mediaStreamRef.current) {
+            mediaStreamRef.current.getTracks().forEach(x => x.stop())
+            mediaStreamRef.current = null
+        }
         if (videoElement) {
             videoElement.src = url
+            videoElement.play()
         }
     }
 

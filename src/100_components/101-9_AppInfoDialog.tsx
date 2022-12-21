@@ -1,7 +1,6 @@
 import React from "react";
 import { useMemo } from "react";
 import { useAppState } from "../003_provider/AppStateProvider";
-import { Credit, CreditProps } from "@dannadori/demo-base";
 
 export const AppInfoDialog = () => {
     const { frontendManagerState } = useAppState();
@@ -42,21 +41,11 @@ export const AppInfoDialog = () => {
     //  Conponents
     ////////////////////////////
     const form = useMemo(() => {
-        const creditProps: CreditProps = {
-            title: "Created by w-okada. FLECT, Co., Ltd.",
-            homepage: "https://www.flect.co.jp/",
-            github: "https://github.com/w-okada/image-analyze-workers",
-            twitter: "https://twitter.com/DannadoriYellow",
-            linkedin: "https://www.linkedin.com/in/068a68187/",
-            blog: "https://medium.com/@dannadori",
-        };
         return (
             <div className="dialog-frame">
                 <div className="dialog-title">Setting</div>
                 <div className="dialog-content">
                     <div className={"dialog-application-title"}>Information</div>
-                    <div className="dialog-description"></div>
-                    <Credit {...creditProps}></Credit>
                     <form>
                         <div className="dialog-input-container">
                             <div className="app-info-dialog-section">

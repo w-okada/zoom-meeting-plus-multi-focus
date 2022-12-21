@@ -1,12 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ThreeStateAndMethods } from "./110_useThree";
 
 //@ts-ignore
 import wasm from "../../resources/converter.wasm"
+import { OUT_CANVAS_ELEMENT } from "../const";
 
 export type UseBrowserProxyProps = {
     isJoined: boolean,
-    threeState: ThreeStateAndMethods;
 }
 
 export type BrowserProxyState = {
@@ -98,6 +97,7 @@ export const useBrowserProxy = (props: UseBrowserProxyProps): BrowserProxyStateA
             //format: "RGBX" // NG
             // format: "BGRA" // NG
         };
+        console.log(buf.slice(1000, 1010))
         // @ts-ignore
         const f = new VideoFrame(buf, init);
         return f
@@ -303,16 +303,11 @@ export const useBrowserProxy = (props: UseBrowserProxyProps): BrowserProxyStateA
             }
 
             if (params?.video) {
-                // const testCanvas = document.getElementById("test") as HTMLCanvasElement;
-                //// Zoom用のストリーム作成
-                // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+
+                const testCanvas = document.getElementById(OUT_CANVAS_ELEMENT) as HTMLCanvasElement;
                 // @ts-ignore
-                const avatarMediaStream = props.threeState.renderer.domElement.captureStream() as MediaStream;
-                // const avatarMediaStream = testCanvas.captureStream() as MediaStream;
-                // avatarMediaStream.getVideoTracks().forEach((x) => {
-                //     msForZoom.addTrack(x);
-                // });
-                transform(avatarMediaStream).getVideoTracks().forEach((x) => {
+                const outMS = testCanvas.captureStream() as MediaStream;
+                transform(outMS).getVideoTracks().forEach((x) => {
                     msForZoom.addTrack(x);
                     // console.log("VIDEO_CAP", x.getCapabilities());
                     // console.log("VIDEO_CAP", x.getConstraints);
@@ -324,7 +319,7 @@ export const useBrowserProxy = (props: UseBrowserProxyProps): BrowserProxyStateA
             // return transform(msForZoom);
             return msForZoom;
         };
-    }, [props.threeState.renderer, audioContext, srcNodeDummyInput]);
+    }, [audioContext, srcNodeDummyInput]);
 
     // Audio Inputが更新されたとき
     useEffect(() => {
