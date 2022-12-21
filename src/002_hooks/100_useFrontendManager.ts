@@ -1,43 +1,41 @@
+import { useState } from "react";
 import { StateControlCheckbox, useStateControlCheckbox } from "../100_components/hooks/useStateControlCheckbox";
+import { MediaType } from "../const";
 
-export type UseFrontendManagerProps = {
-    setStartTranscribe: (val: boolean) => void
-}
+
 
 export type StateControls = {
     openRightSidebarCheckbox: StateControlCheckbox
-    startTranscribeCheckbox: StateControlCheckbox
     settingDialogCheckbox: StateControlCheckbox
-    timeKeeperSettingDialogCheckbox: StateControlCheckbox
     appInfoDialogCheckbox: StateControlCheckbox
 }
 
 type FrontendManagerState = {
     stateControls: StateControls
+    mediaType: MediaType
 };
 
 export type FrontendManagerStateAndMethod = FrontendManagerState & {
-    dummy: string
+    setMediaType: (val: MediaType) => void
 }
-export const useFrontendManager = (props: UseFrontendManagerProps): FrontendManagerStateAndMethod => {
+export const useFrontendManager = (): FrontendManagerStateAndMethod => {
     const openRightSidebarCheckbox = useStateControlCheckbox("open-right-sidebar-checkbox");
 
-    const startTranscribeCheckbox = useStateControlCheckbox("start-transcribe-checkbox", (val: boolean) => { props.setStartTranscribe(val) });
     const settingDialogCheckbox = useStateControlCheckbox("setting-dialog-checkbox");
 
-    const timeKeeperSettingDialogCheckbox = useStateControlCheckbox("time-keeper-setting-dialog-checkbox");
     const appInfoDialogCheckbox = useStateControlCheckbox("app-info-dialog-checkbox");
+
+
+    const [mediaType, setMediaType] = useState<MediaType>("camera")
 
     const returnValue: FrontendManagerStateAndMethod = {
         stateControls: {
             openRightSidebarCheckbox,
-            startTranscribeCheckbox,
             settingDialogCheckbox,
-            timeKeeperSettingDialogCheckbox,
             appInfoDialogCheckbox,
         },
-        dummy: ""
-
+        mediaType,
+        setMediaType,
     };
     return returnValue;
 };
