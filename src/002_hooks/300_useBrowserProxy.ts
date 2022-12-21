@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ThreeStateAndMethods } from "./110_useThree";
 
+//@ts-ignore
+import wasm from "../../resources/converter.wasm"
+
 export type UseBrowserProxyProps = {
     isJoined: boolean,
     threeState: ThreeStateAndMethods;
@@ -24,7 +27,110 @@ export type BrowserProxyStateAndMethod = BrowserProxyState & {
     setAudioInputEnabled: (val: boolean) => void
 
 }
+
+
+export interface Converter extends EmscriptenModule {
+    _getInputImageBufferOffset(): number
+    _getOutputImageBufferOffset(): number
+    _exec(widht: number, height: number): number
+}
+
+type ConverterProps = {
+    converter: Converter
+    inputBufferOffset: number
+    outputBufferOffset: number
+}
+
 export const useBrowserProxy = (props: UseBrowserProxyProps): BrowserProxyStateAndMethod => {
+
+    const converterPropsRef = useRef<ConverterProps>()
+    useEffect(() => {
+        const loadConverter = async () => {
+            const mod = require("../../resources/converter.js");
+            const wasmBase64 = wasm.split(",")[1]
+            const b = Buffer.from(wasmBase64, "base64");
+            const converter = await mod({ wasmBinary: b }) as Converter;
+            const inputBufferOffset = converter._getInputImageBufferOffset()
+            const outputBufferOffset = converter._getOutputImageBufferOffset()
+            console.log("converter is loaded.", converter, inputBufferOffset, outputBufferOffset)
+            const props: ConverterProps = {
+                converter: converter,
+                inputBufferOffset: inputBufferOffset,
+                outputBufferOffset: outputBufferOffset
+            }
+            converterPropsRef.current = props
+        }
+        loadConverter()
+    }, [])
+
+
+    let perf: number[] = []
+    const convertI420AFrameToI420Frame = (frame: any) => {
+        const { width, height } = frame.codedRect;
+        // console.log("Frame", frame.format, frame.colorSpace, width, height)
+        const bgraBuffer = new Uint8Array(width * height * 4);
+        frame.copyTo(bgraBuffer, { rect: frame.codedRect });
+        converterPropsRef.current!.converter!.HEAPU8.set(bgraBuffer, converterPropsRef.current!.inputBufferOffset)
+
+        const start = performance.now()
+        converterPropsRef.current!.converter!._exec(width, height)
+        const end = performance.now()
+        perf.push(end - start)
+
+        if (perf.length > 100) {
+            const avr = perf.reduce((prev, cur) => {
+                return prev + cur
+            }, 0) / perf.length
+
+            console.log(`Performance: ${avr}ms`)
+            perf = []
+        }
+
+        const buf = new Uint8ClampedArray(converterPropsRef.current!.converter!.HEAPU8.slice(converterPropsRef.current!.outputBufferOffset, converterPropsRef.current!.outputBufferOffset + width * height * 3 / 2))
+
+        const init = {
+            timestamp: 0,
+            codedWidth: width,
+            codedHeight: height,
+            format: "I420" // OK
+            // format: "NV12" // OK
+            // format: "I444" // NG
+            //format: "RGBX" // NG
+            // format: "BGRA" // NG
+        };
+        // @ts-ignore
+        const f = new VideoFrame(buf, init);
+        return f
+    }
+
+    const transform = (stream: MediaStream) => {
+        const videoTrack = stream.getVideoTracks()[0];
+
+        // @ts-ignore
+        const trackProcessor = new MediaStreamTrackProcessor({
+            track: videoTrack
+        });
+        // @ts-ignore
+        const trackGenerator = new MediaStreamTrackGenerator({ kind: "video" });
+
+        const transformer = new TransformStream({
+            async transform(videoFrame, controller) {
+                const newFrame = convertI420AFrameToI420Frame(videoFrame);
+                videoFrame.close();
+                controller.enqueue(newFrame);
+            }
+        });
+
+        trackProcessor.readable
+            .pipeThrough(transformer)
+            .pipeTo(trackGenerator.writable);
+
+        const processedStream = new MediaStream();
+        processedStream.addTrack(trackGenerator);
+        return processedStream;
+    }
+
+
 
     // TODO 動くか確認。
     const [referableAudios, setReferableAudios] = useState<ReferableAudio[]>([])
@@ -155,50 +261,6 @@ export const useBrowserProxy = (props: UseBrowserProxyProps): BrowserProxyStateA
     const intervalTimerAudioInput = useRef<NodeJS.Timer | null>(null)
 
 
-    // function convertI420AFrameToI420Frame(frame: any) {
-    //     const { width, height } = frame.codedRect;
-    //     // Y, U, V, Alpha values are stored sequentially. Take only YUV values
-    //     const buffer = new Uint8Array(width * height * 3);
-    //     frame.copyTo(buffer, { rect: frame.codedRect });
-    //     const init = {
-    //         timestamp: 0,
-    //         codedWidth: width,
-    //         codedHeight: height,
-    //         format: "I420"
-    //     };
-    //     console.log("convert")
-    //     // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-    //     // @ts-ignore
-    //     return new VideoFrame(buffer, init);
-    // }
-
-    // function transform(stream: MediaStream) {
-    //     const videoTrack = stream.getVideoTracks()[0];
-    //     // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-    //     // @ts-ignore
-    //     const trackProcessor = new MediaStreamTrackProcessor({
-    //         track: videoTrack
-    //     });
-    //     // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-    //     // @ts-ignore
-    //     const trackGenerator = new MediaStreamTrackGenerator({ kind: "video" });
-
-    //     const transformer = new TransformStream({
-    //         async transform(videoFrame, controller) {
-    //             const newFrame = convertI420AFrameToI420Frame(videoFrame);
-    //             videoFrame.close();
-    //             controller.enqueue(newFrame);
-    //         }
-    //     });
-
-    //     trackProcessor.readable
-    //         .pipeThrough(transformer)
-    //         .pipeTo(trackGenerator.writable);
-
-    //     const processedStream = new MediaStream();
-    //     processedStream.addTrack(trackGenerator);
-    //     return processedStream;
-    // }
 
     // getUserMedia の上書き
     // getUserMedia を呼ばれるときには、Zoomに渡していたMediaStreamと、
@@ -208,6 +270,10 @@ export const useBrowserProxy = (props: UseBrowserProxyProps): BrowserProxyStateA
         navigator.mediaDevices.getUserMedia = async (params) => {
             console.log("GETUSERMEDIA")
             const msForZoom = new MediaStream();
+            if (!converterPropsRef.current) {
+                alert("initializing... please try again after a while.")
+                return msForZoom
+            }
             if (params?.audio) {
                 if (!audioContext) {
                     console.warn("audio context is not initialized", audioContext)
@@ -243,8 +309,14 @@ export const useBrowserProxy = (props: UseBrowserProxyProps): BrowserProxyStateA
                 // @ts-ignore
                 const avatarMediaStream = props.threeState.renderer.domElement.captureStream() as MediaStream;
                 // const avatarMediaStream = testCanvas.captureStream() as MediaStream;
-                avatarMediaStream.getVideoTracks().forEach((x) => {
+                // avatarMediaStream.getVideoTracks().forEach((x) => {
+                //     msForZoom.addTrack(x);
+                // });
+                transform(avatarMediaStream).getVideoTracks().forEach((x) => {
                     msForZoom.addTrack(x);
+                    // console.log("VIDEO_CAP", x.getCapabilities());
+                    // console.log("VIDEO_CAP", x.getConstraints);
+                    // console.log("VIDEO_CAP", x.getSettings());
                 });
 
                 console.log("VIDEOTRACKS", params, msForZoom.getTracks())

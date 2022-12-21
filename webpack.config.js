@@ -16,7 +16,9 @@ module.exports = {
         extensions: [".ts", ".tsx", ".js"],
         fallback: {
             buffer: require.resolve("buffer/"),
-            // buffer: false,
+            "path": false,
+            "fs":false,
+            "crypto": false,
         },
     },
     module: {
@@ -35,6 +37,7 @@ module.exports = {
                     },
                 ],
             },
+            { test: /\.wasm$/, type: "asset/inline" },
             {
                 test: /\.css$/,
                 use: ["style-loader", { loader: "css-loader", options: { importLoaders: 1 } }, "postcss-loader"],
