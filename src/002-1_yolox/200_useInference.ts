@@ -170,14 +170,14 @@ export const useInference = (): InferenceStateAndMethod => {
         rects: []
     })
 
-    const reIdChunkSizeRef = useRef<ReIdChunkSizes>(1)
+    const reIdChunkSizeRef = useRef<ReIdChunkSizes>(2)
     const [reIdChunkSize, _setReIdChunkSize] = useState<ReIdChunkSizes>(reIdChunkSizeRef.current)
     const setReIdChunkSize = (val: ReIdChunkSizes) => {
         reIdChunkSizeRef.current = val
         _setReIdChunkSize(reIdChunkSizeRef.current)
     }
 
-    const reIdMaxNumRef = useRef<ReIdMaxNums>(16)
+    const reIdMaxNumRef = useRef<ReIdMaxNums>(4)
     const [reIdMaxNum, _setReIdMaxNum] = useState<ReIdMaxNums>(reIdMaxNumRef.current)
     const setReIdMaxNum = (val: ReIdMaxNums) => {
         reIdMaxNumRef.current = val
@@ -384,7 +384,6 @@ export const useInference = (): InferenceStateAndMethod => {
         const process = async (prevBox: BoundingBox[]) => {
             frameCounterRef.current++
 
-
             const perfCounterAll_start = performance.now()
             // Copy snapshot of target video/image to target canvas (same size)
             const dstCanvasCtx = dstCanvas.getContext("2d")!
@@ -425,57 +424,60 @@ export const useInference = (): InferenceStateAndMethod => {
 
 
             const currentTime = new Date().getTime()
-            if (currentTime - selectedRectsRef.current.startTime > rotateTimeRef.current * 1000) {
-                targetBox = targetBox.filter(x => { return x.classIdx === 0 }).slice(0, reIdMaxNumRef.current)
-                const selectedRectIdx = select(targetBox.length, cellNumRef.current)
-                const cellWidth = Math.ceil(OUT_WIDTH / selectedRectIdx.length) // cell => 映像内の箱
-                const cellHeight = OUT_HEIGHT
-
-                const newSelectedRects: SelectedRects = {
-                    startTime: currentTime,
-                    rects: []
-                }
-                selectedRectIdx.forEach(idx => {
-                    const rectWidth = (targetBox[idx].endX - targetBox[idx].startX)
-                    const rectHeight = (targetBox[idx].endY - targetBox[idx].startY)
-                    const widthRatio = cellWidth / rectWidth
-                    const heightRatio = cellHeight / rectHeight
-
-                    // 切り抜きの大きさ計算
-                    let cropWidth = 0
-                    let cropHeight = 0
-                    // 倍率の小さい方に依存。
-                    if (widthRatio < heightRatio) {
-                        cropWidth = rectWidth
-                        cropHeight = (cellHeight / cellWidth) * rectWidth
-                    } else {
-                        cropWidth = (cellWidth / cellHeight) * rectHeight
-                        cropHeight = rectHeight
-                    }
-
-                    // 切り抜きの座標計算
-                    const cropCenterX = (targetBox[idx].endX + targetBox[idx].startX) / 2
-                    const cropCenterY = (targetBox[idx].endY + targetBox[idx].startY) / 2
-                    const cropStartX = cropCenterX - cropWidth / 2
-                    const cropEndX = cropCenterX + cropWidth / 2
-                    const cropStartY = cropCenterY - cropHeight / 2
-                    const cropEndY = cropCenterY + cropHeight / 2
-
-                    newSelectedRects.rects.push({
-                        motId: applicationMode === "detection" ? -1 : targetBox[idx].motId,
-                        score: targetBox[idx].score,
-                        startX: cropStartX,
-                        startY: cropStartY,
-                        endX: cropEndX,
-                        endY: cropEndY
-                    })
-                })
-                selectedRectsRef.current = newSelectedRects
-            }
-
+            const elapseTime = currentTime - selectedRectsRef.current.startTime
+            const restTime = rotateTimeRef.current * 1000 - elapseTime
 
             // Draw BoundingBox
             if (applicationMode === "detection") {
+
+                if (elapseTime > rotateTimeRef.current * 1000) {
+                    targetBox = targetBox.filter(x => { return x.classIdx === 0 }).slice(0, reIdMaxNumRef.current)
+                    const selectedRectIdx = select(targetBox.length, cellNumRef.current)
+                    const cellWidth = Math.ceil(OUT_WIDTH / selectedRectIdx.length) // cell => 映像内の箱
+                    const cellHeight = OUT_HEIGHT
+
+                    const newSelectedRects: SelectedRects = {
+                        startTime: currentTime,
+                        rects: []
+                    }
+                    selectedRectIdx.forEach(idx => {
+                        const rectWidth = (targetBox[idx].endX - targetBox[idx].startX)
+                        const rectHeight = (targetBox[idx].endY - targetBox[idx].startY)
+                        const widthRatio = cellWidth / rectWidth
+                        const heightRatio = cellHeight / rectHeight
+
+                        // 切り抜きの大きさ計算
+                        let cropWidth = 0
+                        let cropHeight = 0
+                        // 倍率の小さい方に依存。
+                        if (widthRatio < heightRatio) {
+                            cropWidth = rectWidth
+                            cropHeight = (cellHeight / cellWidth) * rectWidth
+                        } else {
+                            cropWidth = (cellWidth / cellHeight) * rectHeight
+                            cropHeight = rectHeight
+                        }
+
+                        // 切り抜きの座標計算
+                        const cropCenterX = (targetBox[idx].endX + targetBox[idx].startX) / 2
+                        const cropCenterY = (targetBox[idx].endY + targetBox[idx].startY) / 2
+                        const cropStartX = cropCenterX - cropWidth / 2
+                        const cropEndX = cropCenterX + cropWidth / 2
+                        const cropStartY = cropCenterY - cropHeight / 2
+                        const cropEndY = cropCenterY + cropHeight / 2
+
+                        newSelectedRects.rects.push({
+                            motId: - 1,
+                            score: targetBox[idx].score,
+                            startX: cropStartX,
+                            startY: cropStartY,
+                            endX: cropEndX,
+                            endY: cropEndY
+                        })
+                    })
+                    selectedRectsRef.current = newSelectedRects
+                }
+
                 const cellWidth = Math.ceil(OUT_WIDTH / selectedRectsRef.current.rects.length) // cell => 映像内の箱
                 const cellHeight = OUT_HEIGHT
                 outCtx.fillStyle = `rgba(0,0,0,255)`
@@ -503,13 +505,89 @@ export const useInference = (): InferenceStateAndMethod => {
                 targetBox.forEach((x, index) => {
                     x.motId = newReIds[index]
                 })
-                _drawTrackedPersondBoxes(dstCanvasCtx, targetBox)
+
+
+                // 新しい表示用Rectを作成
+                if (elapseTime > rotateTimeRef.current * 1000) {
+                    targetBox = targetBox.filter(x => { return x.classIdx === 0 }).slice(0, reIdMaxNumRef.current)
+                    const selectedRectIdx = select(targetBox.length, cellNumRef.current)
+
+                    const newSelectedRects: SelectedRects = {
+                        startTime: currentTime,
+                        rects: []
+                    }
+                    // とりあえず座標はダミー
+                    selectedRectIdx.forEach(idx => {
+                        newSelectedRects.rects.push({
+                            motId: targetBox[idx].motId,
+                            score: targetBox[idx].score,
+                            startX: 0,
+                            startY: 0,
+                            endX: 0,
+                            endY: 0
+                        })
+                    })
+                    selectedRectsRef.current = newSelectedRects
+                }
+
+
+                // 座標アップデートは毎回やる
+                selectedRectsRef.current.rects.forEach(x => {
+                    const box = targetBox.find(y => { return x.motId == y.motId })
+                    if (!box) {
+                        return
+                    }
+                    const cellWidth = Math.ceil(OUT_WIDTH / selectedRectsRef.current.rects.length)
+                    const cellHeight = OUT_HEIGHT
+
+                    const rectWidth = (box.endX - box.startX)
+                    const rectHeight = (box.endY - box.startY)
+                    const widthRatio = cellWidth / rectWidth
+                    const heightRatio = cellHeight / rectHeight
+
+                    // 切り抜きの大きさ計算
+                    let cropWidth = 0
+                    let cropHeight = 0
+                    // 倍率の小さい方に依存。
+                    if (widthRatio < heightRatio) {
+                        cropWidth = rectWidth
+                        cropHeight = (cellHeight / cellWidth) * rectWidth
+                    } else {
+                        cropWidth = (cellWidth / cellHeight) * rectHeight
+                        cropHeight = rectHeight
+                    }
+
+                    // 切り抜きの座標計算
+                    const cropCenterX = (box.endX + box.startX) / 2
+                    const cropCenterY = (box.endY + box.startY) / 2
+                    const cropStartX = cropCenterX - cropWidth / 2
+                    const cropEndX = cropCenterX + cropWidth / 2
+                    const cropStartY = cropCenterY - cropHeight / 2
+                    const cropEndY = cropCenterY + cropHeight / 2
+
+                    x.startX = cropStartX
+                    x.startY = cropStartY
+                    x.endX = cropEndX
+                    x.endY = cropEndY
+                    x.score = box.score
+                })
+
+                const cellWidth = Math.ceil(OUT_WIDTH / selectedRectsRef.current.rects.length) // cell => 映像内の箱
+                const cellHeight = OUT_HEIGHT
+                outCtx.fillStyle = `rgba(0,0,0,255)`
+                outCtx.fillRect(0, 0, outCanvas.width, outCanvas.height)
+                selectedRectsRef.current.rects.forEach((x, index) => {
+                    outCtx.drawImage(dstCanvas, x.startX, x.startY, x.endX - x.startX, x.endY - x.startY,
+                        cellWidth * index, 0, cellWidth, cellHeight)
+                })
+
+                // _drawTrackedPersondBoxes(dstCanvasCtx, selectedRectsRef.current)
+                _drawDetectedBoxes(dstCanvasCtx, selectedRectsRef.current)
             }
 
 
             // ブラックアウトエフェクト
-            const elapseTime = currentTime - selectedRectsRef.current.startTime
-            const restTime = rotateTimeRef.current * 1000 - elapseTime
+
             if (elapseTime < 500) {
                 const aplha = (500 - elapseTime) / 500
                 outCtx.fillStyle = `rgba(0,0,0,${aplha})`

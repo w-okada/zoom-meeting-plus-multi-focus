@@ -23,14 +23,14 @@ type HumanFeature = {
     feature: tf.Tensor
 }
 export const useInferReIdWithTFJS = () => {
-    const reIdThresholdRef = useRef<number>(0.6)
+    const reIdThresholdRef = useRef<number>(0.3)
     const [reIdThreshold, _setReIdThreshold] = useState<number>(reIdThresholdRef.current)
     const setReIdThreshold = (val: number) => {
         reIdThresholdRef.current = val
         _setReIdThreshold(reIdThresholdRef.current)
     }
 
-    const reIdCacheMaxNumRef = useRef<ReIdCacheMaxNums>(128)
+    const reIdCacheMaxNumRef = useRef<ReIdCacheMaxNums>(32)
     const [reIdCacheMaxNum, _setReIdCacheMaxNum] = useState<ReIdCacheMaxNums>(reIdCacheMaxNumRef.current)
     const setReIdCacheMaxNum = (val: ReIdCacheMaxNums) => {
         reIdCacheMaxNumRef.current = val

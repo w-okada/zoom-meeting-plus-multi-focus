@@ -5,8 +5,10 @@ export const useDrawDetectedBoxes = () => {
 
     const _drawDetectedBoxes = (dstCanvasCtx: CanvasRenderingContext2D, boxes: SelectedRects) => {
         boxes.rects.forEach((x) => {
+            // const color = COLOR_RAINBOW[0]
+            // const colorStr = `rgba(${color[0]}, ${color[1]}, ${color[2]}, 0.6)`
             const color = COLOR_RAINBOW[0]
-            const colorStr = `rgba(${color[0]}, ${color[1]}, ${color[2]}, 0.6)`
+            const colorStr = `rgba(200,0,0 , 0.8)`
 
             dstCanvasCtx.beginPath();
             dstCanvasCtx.strokeStyle = colorStr;

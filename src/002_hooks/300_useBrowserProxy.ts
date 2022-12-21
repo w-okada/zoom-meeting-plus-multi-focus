@@ -176,7 +176,7 @@ export const useBrowserProxy = (props: UseBrowserProxyProps): BrowserProxyStateA
                 deviceId: "default_videoinput",
                 groupId: "defaul_videoinput",
                 kind: "videoinput",
-                label: "avatar movie",
+                label: "fixed point camera",
                 toJSON: () => { console.warn("not implemented.") }
             })
             console.log("devices:", devices)
