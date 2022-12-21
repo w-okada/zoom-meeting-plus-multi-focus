@@ -1,5 +1,7 @@
 import React, { useEffect, useMemo } from "react";
 import { useAppState } from "../003_provider/AppStateProvider";
+import { AdvancedSetting } from "./100-2_RightSidebarAdvance";
+import { BasicSetting } from "./100-2_RightSidebarBasic";
 import { RightSidebarMonitor } from "./100-2_RightSidebarMonitor";
 import { useStateControlCheckbox } from "./hooks/useStateControlCheckbox";
 import { AnimationTypes, HeaderButton, HeaderButtonProps } from "./parts/002_HeaderButton";
@@ -8,6 +10,9 @@ export const RightSidebar = () => {
     const { frontendManagerState, zoomSDKState } = useAppState();
     const sidebarAccordionZoomCheckbox = useStateControlCheckbox("sidebar-accordion-zoom-checkbox");
     const sidebarAccordionMonitorCheckbox = useStateControlCheckbox("sidebar-accordion-monitor-checkbox");
+
+    const sidebarAccordionBasicSettingCheckBox = useStateControlCheckbox("basic-setting");
+    const sidebarAccordionAdvancedSettingCheckBox = useStateControlCheckbox("adviced-setting");
 
     /**
      * (1)According Actions
@@ -35,6 +40,31 @@ export const RightSidebar = () => {
             tooltipClass: "tooltip-right",
         };
         return <HeaderButton {...accodionButtonForMonitoProps}></HeaderButton>;
+    }, []);
+
+    const accodionButtonForBasicSetting = useMemo(() => {
+        const accodionButtonForBasicSettingProps: HeaderButtonProps = {
+            stateControlCheckbox: sidebarAccordionBasicSettingCheckBox,
+            tooltip: "Open/Close",
+            onIcon: ["fas", "caret-up"],
+            offIcon: ["fas", "caret-up"],
+            animation: AnimationTypes.spinner,
+            tooltipClass: "tooltip-right",
+        };
+        return <HeaderButton {...accodionButtonForBasicSettingProps}></HeaderButton>;
+    }, []);
+
+
+    const accodionButtonForAdvancedSetting = useMemo(() => {
+        const accodionButtonForAdvancedSettingProps: HeaderButtonProps = {
+            stateControlCheckbox: sidebarAccordionAdvancedSettingCheckBox,
+            tooltip: "Open/Close",
+            onIcon: ["fas", "caret-up"],
+            offIcon: ["fas", "caret-up"],
+            animation: AnimationTypes.spinner,
+            tooltipClass: "tooltip-right",
+        };
+        return <HeaderButton {...accodionButtonForAdvancedSettingProps}></HeaderButton>;
     }, []);
 
     /**
@@ -86,7 +116,7 @@ export const RightSidebar = () => {
                                 <div className="sidebar-zoom-area-label">meeting num</div>
                             </div>
                             <div className="sidebar-zoom-area-input">
-                                <input type="text" className="sidebar-zoom-area-password" id="meeting-pw" />
+                                <input type="password" className="sidebar-zoom-area-password" id="meeting-pw" />
                                 <div className="sidebar-zoom-area-label">password</div>
                             </div>
                             <div className="sidebar-zoom-area-input">
@@ -107,6 +137,16 @@ export const RightSidebar = () => {
                     </div>
                 </div>
 
+
+                {sidebarAccordionBasicSettingCheckBox.trigger}
+                <div className="sidebar-partition">
+                    <div className="sidebar-header">
+                        <div className="title">Setting</div>
+                        <div className="caret"> {accodionButtonForBasicSetting}</div>
+                    </div>
+                    <BasicSetting></BasicSetting>
+                </div>
+
                 {sidebarAccordionMonitorCheckbox.trigger}
                 <div className="sidebar-partition">
                     <div className="sidebar-header">
@@ -114,6 +154,16 @@ export const RightSidebar = () => {
                         <div className="caret"> {accodionButtonForMonitor}</div>
                     </div>
                     <RightSidebarMonitor></RightSidebarMonitor>
+                </div>
+
+
+                {sidebarAccordionAdvancedSettingCheckBox.trigger}
+                <div className="sidebar-partition">
+                    <div className="sidebar-header">
+                        <div className="title">Advanced Setting</div>
+                        <div className="caret"> {accodionButtonForAdvancedSetting}</div>
+                    </div>
+                    <AdvancedSetting></AdvancedSetting>
                 </div>
 
             </div>

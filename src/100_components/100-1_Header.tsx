@@ -75,7 +75,9 @@ export const Header = () => {
                     <div className="group">
                         {/* {buttons.commentButton} */}
                         {buttons.settingButton}
-                        {buttons.appInfoButton}
+                        <a className="header-button-link" href="https://github.com/w-okada/zoom-meeting-plus-multi-focus" target="_blank" rel="noopener noreferrer">
+                            <img src="./assets/icons/github.svg" />
+                        </a>
                     </div>
                     <div className="group">{buttons.rightSidebarButton}</div>
                 </div>

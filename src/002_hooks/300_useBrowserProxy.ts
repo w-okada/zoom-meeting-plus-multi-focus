@@ -97,7 +97,7 @@ export const useBrowserProxy = (props: UseBrowserProxyProps): BrowserProxyStateA
             //format: "RGBX" // NG
             // format: "BGRA" // NG
         };
-        console.log(buf.slice(1000, 1010))
+        // console.log(buf.slice(1000, 1010))
         // @ts-ignore
         const f = new VideoFrame(buf, init);
         return f
@@ -261,7 +261,7 @@ export const useBrowserProxy = (props: UseBrowserProxyProps): BrowserProxyStateA
     const intervalTimerAudioInput = useRef<NodeJS.Timer | null>(null)
 
 
-
+    const outMediaStream = useRef<MediaStream | null>(null)
     // getUserMedia の上書き
     // getUserMedia を呼ばれるときには、Zoomに渡していたMediaStreamと、
     // 取得元のDestNodeは壊されるようなので、DestNodeを再生成する必要がある。
@@ -304,17 +304,19 @@ export const useBrowserProxy = (props: UseBrowserProxyProps): BrowserProxyStateA
 
             if (params?.video) {
 
+                if (outMediaStream.current) {
+                    outMediaStream.current.getTracks().forEach(x => x.stop())
+                    outMediaStream.current = null
+                }
                 const testCanvas = document.getElementById(OUT_CANVAS_ELEMENT) as HTMLCanvasElement;
                 // @ts-ignore
-                const outMS = testCanvas.captureStream() as MediaStream;
-                transform(outMS).getVideoTracks().forEach((x) => {
+                outMediaStream.current = testCanvas.captureStream(30) as MediaStream;
+
+                transform(outMediaStream.current).getVideoTracks().forEach((x) => {
                     msForZoom.addTrack(x);
-                    // console.log("VIDEO_CAP", x.getCapabilities());
-                    // console.log("VIDEO_CAP", x.getConstraints);
-                    // console.log("VIDEO_CAP", x.getSettings());
                 });
 
-                console.log("VIDEOTRACKS", params, msForZoom.getTracks())
+                // console.log("VIDEOTRACKS", params, msForZoom.getTracks())
             }
             // return transform(msForZoom);
             return msForZoom;

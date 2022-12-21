@@ -2,7 +2,7 @@
 const path = require("path");
 const HtmlWebpackPlugin = require("html-webpack-plugin");
 const webpack = require("webpack");
-
+const CopyPlugin = require("copy-webpack-plugin");
 module.exports = {
     mode: "development",
     // mode: "production",
@@ -57,6 +57,29 @@ module.exports = {
             Buffer: ["buffer", "Buffer"],
             process: "process/browser",
         }),
+        new CopyPlugin({
+            patterns: [{ from: "models/*.onnx", to: "" }],
+        }),
+        new CopyPlugin({
+            patterns: [{ from: "models/tfjs", to: "models" }],
+        }),
+        new CopyPlugin({
+            patterns: [{ from: "models/youtu_reid", to: "models/youtu_reid" }],
+        }),
+        new CopyPlugin({
+            patterns: [{ from: "models/reid", to: "models/reid" }],
+        }),
+        new CopyPlugin({
+            patterns: [{ from: "models/cs", to: "models/cs" }],
+        }),
+        new CopyPlugin({
+            patterns: [{ from: "models/cs_512", to: "models/cs_512" }],
+        }),
+        new CopyPlugin({
+            patterns: [{ from: "models/cs_256", to: "models/cs_256" }],
+        }),
+
+
     ],
     devServer: {
         proxy: {

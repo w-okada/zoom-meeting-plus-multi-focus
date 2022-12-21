@@ -1,4 +1,4 @@
-import React, { useContext } from "react";
+import React, { useContext, useEffect } from "react";
 import { ReactNode } from "react";
 import { DeviceManagerStateAndMethod, useDeviceManager } from "../002_hooks/301_useDeviceManager";
 import { BackendManagerStateAndMethod, useBackendManager } from "../002_hooks/002_useBackendManager";
@@ -6,7 +6,7 @@ import { FrontendManagerStateAndMethod, useFrontendManager } from "../002_hooks/
 import { ResourceManagerStateAndMethod, useResourceManager } from "../002_hooks/003_useResourceManager";
 import { useZoomSDK, ZoomSDKStateAndMethod } from "../002_hooks/200_useZoomSDK";
 import { BrowserProxyStateAndMethod, useBrowserProxy } from "../002_hooks/300_useBrowserProxy";
-import { MultiFocusStateAndMethod, useMultiFocus } from "../002_hooks/401_useMultiFocus";
+import { InferenceStateAndMethod, useInference } from "../002-1_yolox/200_useInference";
 type Props = {
     children: ReactNode;
 };
@@ -20,7 +20,8 @@ interface AppStateValue {
     deviceManagerState: DeviceManagerStateAndMethod;
 
     frontendManagerState: FrontendManagerStateAndMethod;
-    multiFocusState: MultiFocusStateAndMethod
+
+    inferenceState: InferenceStateAndMethod
 }
 
 const AppStateContext = React.createContext<AppStateValue | null>(null);
@@ -41,7 +42,19 @@ export const AppStateProvider = ({ children }: Props) => {
     });
     const deviceManagerState = useDeviceManager({ browserProxyState });
     const frontendManagerState = useFrontendManager();
-    const multiFocusState = useMultiFocus()
+    const inferenceState = useInference();
+
+
+    useEffect(() => {
+        inferenceState.stopProcess()
+    }, [
+        frontendManagerState.mediaType,
+        deviceManagerState.inputResolution,
+        inferenceState.engineType,
+        inferenceState.inputShape,
+        inferenceState.applicationMode
+    ])
+
 
     const providerValue = {
         deviceManagerState,
@@ -50,7 +63,7 @@ export const AppStateProvider = ({ children }: Props) => {
         zoomSDKState,
         browserProxyState,
         frontendManagerState,
-        multiFocusState
+        inferenceState
     };
 
     return <AppStateContext.Provider value={providerValue}>{children}</AppStateContext.Provider>;

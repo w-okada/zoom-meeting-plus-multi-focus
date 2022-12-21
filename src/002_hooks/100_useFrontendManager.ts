@@ -1,4 +1,6 @@
+import { useState } from "react";
 import { StateControlCheckbox, useStateControlCheckbox } from "../100_components/hooks/useStateControlCheckbox";
+import { MediaType } from "../const";
 
 
 
@@ -10,10 +12,11 @@ export type StateControls = {
 
 type FrontendManagerState = {
     stateControls: StateControls
+    mediaType: MediaType
 };
 
 export type FrontendManagerStateAndMethod = FrontendManagerState & {
-    dummy: string
+    setMediaType: (val: MediaType) => void
 }
 export const useFrontendManager = (): FrontendManagerStateAndMethod => {
     const openRightSidebarCheckbox = useStateControlCheckbox("open-right-sidebar-checkbox");
@@ -22,14 +25,17 @@ export const useFrontendManager = (): FrontendManagerStateAndMethod => {
 
     const appInfoDialogCheckbox = useStateControlCheckbox("app-info-dialog-checkbox");
 
+
+    const [mediaType, setMediaType] = useState<MediaType>("camera")
+
     const returnValue: FrontendManagerStateAndMethod = {
         stateControls: {
             openRightSidebarCheckbox,
             settingDialogCheckbox,
             appInfoDialogCheckbox,
         },
-        dummy: ""
-
+        mediaType,
+        setMediaType,
     };
     return returnValue;
 };
